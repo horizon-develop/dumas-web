@@ -1,0 +1,1 @@
+export type DiscountType = "PORCENTAJE" | "MONTO_FIJO";
