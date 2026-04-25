@@ -1,83 +1,113 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 @AGENTS.md
 
 ## Commands
 
 ```bash
-bun dev          # start dev server on :3000
-bun run build    # production build
-bun run lint     # ESLint
+bun dev           # start dev server on :3000
+bun run build     # production build
+bun run lint      # ESLint
+bun db:push       # push schema to Neon (no migration files)
+bun db:generate   # generate migration files
+bun db:studio     # open Drizzle Studio
 ```
 
 No test suite is configured.
 
 ## Required environment variables
 
-Create `.env.local` with:
+Fill `.env.local`:
 
 ```
-NEXT_PUBLIC_BACKEND_URL=       # REST API base URL
-NEXT_PUBLIC_FIREBASE_API_KEY=
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
-NEXT_PUBLIC_FIREBASE_APP_ID=
-NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
+SISTEL_URL=http://asp12.selfip.net:2932
+SISTEL_USER=
+SISTEL_PASS=
+
+DATABASE_URL=           # Neon connection string
+NEXTAUTH_SECRET=        # openssl rand -base64 32
+NEXTAUTH_URL=http://localhost:3000
+
+GOOGLE_CLIENT_ID=       # Firebase Console → Auth → Google → Web client
+GOOGLE_CLIENT_SECRET=
+
+NEXT_PUBLIC_FIREBASE_*  # Already filled — Firebase Storage only
 ```
 
 ## Architecture
 
-### Next.js as a shell, React Router owns all routing
+### Stack
+Next.js 15 App Router + Drizzle ORM + Neon PostgreSQL + Sistel API + Firebase Storage. Deploy on Vercel.
 
-Next.js handles the deployment/build layer only. The entire app is mounted through a single catch-all route `app/[[...rest]]/page.tsx` which dynamically imports `features/App.tsx` with SSR disabled (`ssr: false`). All navigation is React Router — never use `next/navigation` or Next.js `Link`.
+### Routing
+Pure Next.js App Router. Every page is a file in `app/`. Server Components by default; add `"use client"` only when needed (forms, cart, interactivity). Use `next/link` and `next/navigation` — never React Router.
+
+### Pages
+| Route | Description |
+|---|---|
+| `/` | Landing — featured products from Sistel |
+| `/shop` | Product catalog with filters (URL search params) |
+| `/shop/[sku]` | Product detail |
+| `/carrito` | Cart (client component) |
+| `/checkout` | Checkout (auth protected) |
+| `/pedidos/[id]` | Order confirmation |
+| `/mi-cuenta` | Customer profile + order history |
+| `/login` | Login (credentials + Google) |
+| `/admin/productos` | Product image management |
+| `/admin/clientes` | Client list from Sistel + web account linking |
+| `/admin/pedidos` | Order history |
+| `/admin/pedidos/[id]` | Order detail |
+
+### API Routes
+| Route | Purpose |
+|---|---|
+| `/api/auth/[...nextauth]` | NextAuth handler |
+| `/api/products` | Proxy to Sistel /vistas/articulos + merge images |
+| `/api/orders` | POST — create order in DB + send POST /deal to Sistel |
+| `/api/me/cuenta` | GET — Sistel account balance for current user |
+
+### Data sources
+- **Sistel API** (`lib/sistel.ts`) — products, clients, account balances. Server-side only. JWT auto-refreshes in memory with `POST /auth/login`.
+- **Neon PostgreSQL** (`lib/db/`) — users, orders, order_items, product_images, discount_config. Drizzle ORM.
+- **Firebase Storage** — product images keyed by SKU. Upload via admin panel.
+
+### Database schema (`lib/db/schema.ts`)
+| Table | Purpose |
+|---|---|
+| `users` | Auth — email, password_hash, role (CLIENT/ADMIN), tax_id (CUIT), sistel_id |
+| `orders` | Orders — user_id, status, total_amount, payment_method |
+| `order_items` | Line items — order_id, sku, product_name, quantity, unit_price, final_price |
+| `product_images` | Firebase URL per SKU (sku is PK) |
+
+### Auth (`lib/auth.ts`)
+NextAuth v5 (JWT strategy). Two providers:
+- **Credentials** — email + bcrypt password from `users` table
+- **Google** — only works if user email already exists in DB (admin invites clients)
+
+Session contains `id` and `role`. Middleware (`middleware.ts`) enforces:
+- `/admin/*` → ADMIN role required
+- `/checkout`, `/mi-cuenta`, `/pedidos/*` → auth required
+
+### Sistel client (`lib/sistel.ts`)
+Server-only. `POST /auth/login` gets Bearer JWT (cached in memory, refreshes 30s before expiry).
+- `sistelGet(alias, params)` → `GET /vistas/:alias`
+- `sistelPost(path, body)` → any POST (used for `/deal`)
+
+### Cart
+Client-side only (`features/cart/context/CartContext.tsx`). localStorage, no backend sync. `CartItem`: `{ sku, name, price, quantity, imageUrl? }`.
 
 ### Feature modules
+Business logic in `features/<domain>/components/`. No `api/` dirs — all data fetching happens in Server Components or API routes.
 
-All business logic lives in `features/<domain>/` with consistent internal structure:
-- `api/` — Axios calls to the backend
-- `components/` — UI components for that domain
-- `types/` — TypeScript types/interfaces
-- `hooks/`, `context/`, `providers/`, `utils/` — as needed per feature
+Features kept: `auth`, `cart`, `product`, `user`, `order`, `admin`.
 
-Features: `auth`, `cart`, `order`, `payment`, `product`, `admin`, `user`, `brand`, `category`, `coupon`, `address`.
-
-Cross-cutting code (Navbar, Footer, shared hooks, formatters, the Axios client, Firebase config) lives in `shared/`.
-
-### Auth model
-
-Session is JWT-based with HttpOnly cookies (set by the backend). The user object is mirrored to `localStorage` as JSON under the key `"user"` for synchronous reads. On app mount, `verifySession()` calls `GET /api/auth/me` to validate the session and refresh localStorage.
-
-Token refresh happens automatically in the Axios interceptor (`shared/utils/axios.ts`): on 401, it calls `POST /api/auth/refresh`, replays the queue, and on failure dispatches the custom event `auth-logout` which shows the login modal.
-
-Auth communication between components uses custom window events:
-- `auth-login` — user signed in (detail = user object)
-- `auth-logout` — session ended
-- `auth-change` — generic re-render trigger
-- `auth-open-login` — open the login sidebar
-
-Firebase is used only for **Google OAuth** (`signInWithPopup`) and **Firebase Storage** — not as the primary auth backend. The Google ID token is exchanged with the backend via `POST /api/auth/google`.
-
-### Route guards
-
-Three wrappers inside `features/App.tsx`:
-- `RequireAuth` — redirects unauthenticated users to the login modal
-- `ClientRoute` — redirects `ADMINISTRADOR` role to `/admin/dashboard`
-- `ProtectedRoute` — allows only specified roles (used for admin routes)
-
-### State management
-
-- **Redux** — product list and filter state (`features/product/providers/ProductFiltersProvider`)
-- **React Context** — cart (`features/cart/context/CartContext`), MercadoPago payment (`features/payment/api/MercadoPagoContext`)
-- **localStorage** — user session (not Redux)
-
-### Payment
-
-MercadoPago is the payment provider. Checkout creates a preference; `/payment/success|pending|failure` are the redirect targets after the MercadoPago flow.
+Cross-cutting code in `shared/`:
+- `config/firebase.ts` — Firebase Storage only (Auth removed)
+- `services/storage.ts` — Firebase upload helpers
+- `utils/formatters.ts`, `priceUtils.ts`, `numberUtils.ts`
 
 ### Styling
+Tailwind CSS. Global styles in `app/globals.css`. Font: Lato via `next/font/google`. UI in Spanish.
 
-Tailwind CSS. Global styles in `app/globals.css`. Font is Lato (via `next/font/google`), set in `app/layout.tsx`. The app UI is in Spanish.
+### Payment model
+B2B, no payment gateway. Client selects payment method at checkout. Order submitted to Sistel via `POST /deal`.
