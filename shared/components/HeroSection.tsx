@@ -1,4 +1,7 @@
-import { Link } from "react-router-dom";
+"use client";
+
+import Link from "next/link";
+import { motion } from "framer-motion";
 import RotatingText from "./Animations/RotatingText";
 
 const HeroSection: React.FC = () => {
@@ -16,7 +19,12 @@ const HeroSection: React.FC = () => {
 
       <div className="relative z-10 max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-28">
         <div className="max-w-3xl flex flex-col gap-6 text-center md:text-left items-center md:items-start">
-          <div className="space-y-4 animate__animated animate__fadeInLeft" style={{ animationDuration: "1s" }}>
+          <motion.div
+            className="space-y-4"
+            initial={{ opacity: 0, x: -40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8 }}
+          >
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white drop-shadow-lg leading-tight">
               Lanza tu <span className="text-[#FFE4E6]">petshop</span> sin complicaciones
             </h1>
@@ -31,12 +39,7 @@ const HeroSection: React.FC = () => {
                 exit={{ y: "-120%" }}
                 staggerDuration={0.03}
                 splitLevelClassName="overflow-hidden"
-                transition={{
-                  type: "spring",
-                  damping: 30,
-                  stiffness: 400,
-                  bounce: 0.1
-                }}
+                transition={{ type: "spring", damping: 30, stiffness: 400, bounce: 0.1 }}
                 rotationInterval={2600}
                 splitBy="words"
               />
@@ -46,23 +49,26 @@ const HeroSection: React.FC = () => {
               Abastece tu tienda con productos veterinarios y pet care de forma ágil, con precios de distribuidor y soporte dedicado para nuevos negocios.
             </p>
 
-            <div className="mt-4 flex flex-col sm:flex-row flex-wrap gap-3 justify-center md:justify-start animate__animated animate__fadeInUp">
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent("auth-open-register"))}
-                className="inline-flex items-center justify-center bg-white text-[#8B0000] px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all duration-300 shadow-lg transform hover:scale-105 w-full sm:w-auto"
-                aria-label="Crear cuenta gratis"
-              >
-                Crear cuenta gratis
-              </button>
+            <motion.div
+              className="mt-4 flex flex-col sm:flex-row flex-wrap gap-3 justify-center md:justify-start"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
               <Link
-                to="/shop"
+                href="/login"
+                className="inline-flex items-center justify-center bg-white text-[#8B0000] px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all duration-300 shadow-lg hover:scale-105 w-full sm:w-auto"
+              >
+                Acceder al catálogo
+              </Link>
+              <Link
+                href="/shop"
                 className="inline-flex items-center justify-center bg-[#8B0000]/80 text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#8B0000] transition-all duration-300 shadow-lg border border-white/20 w-full sm:w-auto"
-                aria-label="Ver catálogo mayorista"
               >
                 Ver catálogo mayorista
               </Link>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
       </div>
     </section>

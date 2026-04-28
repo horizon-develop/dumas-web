@@ -107,8 +107,8 @@ export default async function ShopPage({
             {result && result.products.length > 0 ? (
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                  {result.products.map((product) => (
-                    <ProductCard key={`${product.ID}-${product.Codigo}`} product={product as ProductItem} />
+                  {result.products.map((product, i) => (
+                    <ProductCard key={`${i}-${product.Codigo}`} product={product as ProductItem} />
                   ))}
                 </div>
 
