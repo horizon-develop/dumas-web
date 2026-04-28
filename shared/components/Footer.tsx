@@ -1,7 +1,9 @@
-import React from "react";
 import { FiSend, FiCreditCard, FiGlobe } from "react-icons/fi";
+import { auth } from "@/lib/auth";
 
-const Footer: React.FC = () => {
+const Footer = async () => {
+  const session = await auth();
+  if (session?.user?.role === "ADMIN") return null;
   return (
     <footer className="bg-[#8B0000] text-white border-t-4 border-[#6A0000]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">

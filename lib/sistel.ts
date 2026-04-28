@@ -12,6 +12,7 @@ async function getToken(): Promise<string> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username: SISTEL_USER, password: SISTEL_PASS }),
+    cache: "no-store",
   });
 
   if (!res.ok) throw new Error(`Sistel auth failed: ${res.status}`);
@@ -21,7 +22,7 @@ async function getToken(): Promise<string> {
   if (!token) throw new Error("Sistel auth: no token in response");
 
   const payload = JSON.parse(
-    Buffer.from(token.split(".")[1], "base64").toString()
+    Buffer.from(token.split(".")[1], "base64url").toString()
   );
   cachedToken = token;
   tokenExpiry = payload.exp * 1000;
@@ -35,10 +36,39 @@ export interface SistelListResponse<T> {
   limit?: number;
 }
 
+export interface SistelPaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 export async function sistelGet<T>(
   alias: string,
   params?: Record<string, string>
 ): Promise<SistelListResponse<T>> {
+  const token = await getToken();
+  const url = new URL(`${SISTEL_BASE}/vistas/${alias}`);
+  if (params) {
+    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  }
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${token}` },
+    next: { revalidate: 60 },
+  });
+
+  if (!res.ok) throw new Error(`Sistel GET /vistas/${alias}: ${res.status}`);
+  return res.json();
+}
+
+export async function sistelGetPaginated<T>(
+  alias: string,
+  params?: Record<string, string>
+): Promise<SistelPaginatedResponse<T>> {
   const token = await getToken();
   const url = new URL(`${SISTEL_BASE}/vistas/${alias}`);
   if (params) {
@@ -78,17 +108,19 @@ export interface SistelCliente {
   Domicilio: string;
   Localidad: string;
   Provincia: string;
+  Telefono?: string;
 }
 
 export interface SistelArticulo {
-  CodArticulo: string;
-  Descripcion: string;
-  Precio: number;
+  ID: number;
+  Codigo: string;
+  codbar: string;
+  concepto: string;
+  rubro: string;
+  subrubro: string;
+  marca: string;
+  PrecioFinal: number;
   Stock: number;
-  Rubro: string;
-  Marca: string;
-  SubRubro?: string;
-  CodigoBarras?: string;
 }
 
 export interface SistelCuenta {
