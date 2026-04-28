@@ -7,7 +7,7 @@ import { inArray } from "drizzle-orm";
 import { ProductCard, ProductItem } from "@/features/product/components/ProductCard";
 import { ShopFilters } from "@/features/product/components/ShopFilters";
 
-const PAGE_SIZE = 48;
+const PAGE_SIZE = 50;
 
 interface SearchParams {
   page?: string;
