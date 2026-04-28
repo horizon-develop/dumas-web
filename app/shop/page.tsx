@@ -25,7 +25,7 @@ async function getProducts(sp: SearchParams) {
   if (sp.rubro) params.rubro = sp.rubro;
   if (sp.marca) params.marca = sp.marca;
 
-  const sistelRes = await sistelGetPaginated<SistelArticulo>("articulos", params).catch(() => null);
+  const sistelRes = await sistelGetPaginated<SistelArticulo>("productos", params).catch(() => null);
   if (!sistelRes) return null;
 
   const skus = sistelRes.data.map((p) => p.Codigo).filter(Boolean);

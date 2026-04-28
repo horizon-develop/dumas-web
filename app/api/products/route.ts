@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     if (val) params[key] = val;
   }
 
-  const sistelRes = await sistelGetPaginated<SistelArticulo>("articulos", params);
+  const sistelRes = await sistelGetPaginated<SistelArticulo>("productos", params);
 
   const skus = sistelRes.data.map((p) => p.Codigo).filter(Boolean);
   const images =
