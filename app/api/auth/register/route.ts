@@ -3,14 +3,44 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { sistelGet } from "@/lib/sistel";
+import { sistelGetPaginated } from "@/lib/sistel";
 import type { SistelCliente } from "@/lib/sistel";
 
 function normalizeCuit(cuit: string): string {
   return cuit.replace(/\D/g, "");
 }
 
-const PLACEHOLDER_CUIT = "00000000000";
+const SISTEL_LIMIT = 50;
+
+async function findSistelIdByCuit(cuit: string, email: string): Promise<number | null> {
+  const base = { page: "1", limit: String(SISTEL_LIMIT) };
+  const first = await sistelGetPaginated<SistelCliente>("clientes", base);
+  const { totalPages } = first.pagination;
+
+  const rest =
+    totalPages > 1
+      ? await Promise.all(
+          Array.from({ length: totalPages - 1 }, (_, i) =>
+            sistelGetPaginated<SistelCliente>("clientes", {
+              ...base,
+              page: String(i + 2),
+            }).then((r) => r.data)
+          )
+        )
+      : [];
+
+  const all = [...first.data, ...rest.flat()];
+
+  const match = all.find((c) => {
+    const cuitNorm = normalizeCuit(c.CUIT);
+    if (cuitNorm === "00000000000" || cuitNorm.length !== 11) return false;
+    if (cuitNorm === cuit) return true;
+    if (c.Email && c.Email.toLowerCase() === email) return true;
+    return false;
+  });
+
+  return match?.ID ?? null;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,15 +68,7 @@ export async function POST(req: NextRequest) {
 
     let sistelId: number | null = null;
     try {
-      const res = await sistelGet<SistelCliente>("clientes", { q: normalizedTaxId, limit: "20" });
-      const match = res.data.find((c) => {
-        const cuitNorm = normalizeCuit(c.CUIT);
-        if (cuitNorm === PLACEHOLDER_CUIT) return false;
-        if (cuitNorm === normalizedTaxId) return true;
-        if (c.Email && c.Email.toLowerCase() === normalizedEmail) return true;
-        return false;
-      });
-      if (match) sistelId = match.ID;
+      sistelId = await findSistelIdByCuit(normalizedTaxId, normalizedEmail);
     } catch {
       // Sistel unreachable — create account without linking
     }

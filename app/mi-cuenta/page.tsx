@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { sistelGet } from "@/lib/sistel";
-import type { SistelCliente, SistelDeuda } from "@/lib/sistel";
+import type { SistelDeuda } from "@/lib/sistel";
 import { formatCurrency, formatDate } from "@/shared/utils/formatters";
 
 export default async function MiCuentaPage() {
@@ -33,24 +33,12 @@ export default async function MiCuentaPage() {
     );
   }
 
-  let sistelCliente: SistelCliente | null = null;
   let deudas: SistelDeuda[] = [];
 
   if (user.sistelId) {
-    const [clientesRes, deudasRes] = await Promise.allSettled([
-      sistelGet<SistelCliente>("clientes", { q: user.taxId ?? "", limit: "20" }),
-      sistelGet<SistelDeuda>("deudas", undefined, { nocache: true }),
-    ]);
-
-    if (clientesRes.status === "fulfilled") {
-      const norm = (s: string) => s.replace(/\D/g, "");
-      sistelCliente = clientesRes.value.data.find(
-        (c) => c.ID === user.sistelId || norm(c.CUIT) === norm(user.taxId ?? "")
-      ) ?? null;
-    }
-
-    if (deudasRes.status === "fulfilled") {
-      deudas = deudasRes.value.data.filter((d) => d.IDCLiente === user.sistelId);
+    const deudasRes = await sistelGet<SistelDeuda>("deudas", undefined, { nocache: true }).catch(() => null);
+    if (deudasRes) {
+      deudas = deudasRes.data.filter((d) => d.IDCLiente === user.sistelId);
     }
   }
 
@@ -73,35 +61,6 @@ export default async function MiCuentaPage() {
           <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">CUIT</p>
           <p className="text-sm font-mono text-gray-900">{user.taxId ?? "—"}</p>
         </div>
-        {sistelCliente && (
-          <>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">Razón social</p>
-              <p className="text-sm text-gray-900">{sistelCliente.RazonSocial}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">Condición IVA</p>
-              <p className="text-sm text-gray-900">{sistelCliente.CondicionIva}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">Domicilio</p>
-              <p className="text-sm text-gray-900">{sistelCliente.Domicilio}, {sistelCliente.Localidad}, {sistelCliente.Provincia}</p>
-            </div>
-            {sistelCliente.Telefono && (
-              <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">Teléfono</p>
-                <p className="text-sm text-gray-900">{sistelCliente.Telefono}</p>
-              </div>
-            )}
-          </>
-        )}
-        {!sistelCliente && user.sistelId && (
-          <div className="sm:col-span-2">
-            <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-              No se pudo cargar la información de Sistel en este momento.
-            </p>
-          </div>
-        )}
         {!user.sistelId && (
           <div className="sm:col-span-2">
             <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
