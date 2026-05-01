@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { signIn, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
@@ -147,6 +148,13 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
           "Iniciar Sesión"
         )}
       </button>
+
+      <p className="text-sm text-gray-500 text-center">
+        ¿No tenés cuenta?{" "}
+        <Link href="/register" className="text-[#8B0000] font-semibold hover:underline">
+          Solicitá acceso
+        </Link>
+      </p>
 
       <button
         onClick={handleGoogleSignIn}

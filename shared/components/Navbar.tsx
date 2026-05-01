@@ -188,6 +188,13 @@ const Navbar: React.FC = () => {
                     >
                       Iniciar sesión
                     </Link>
+                    <Link
+                      href="/register"
+                      onClick={() => setIsSidebarOpen(false)}
+                      className="block w-full px-4 py-3 text-center text-[#8B0000] border-2 border-[#8B0000] hover:bg-red-50 rounded-lg font-semibold transition-colors"
+                    >
+                      Registrarse
+                    </Link>
                   </>
                 )}
               </div>

@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { uploadProductImage, deleteProductImage } from "@/shared/services/storage";
+import { compressImage, isAllowedFormat } from "@/shared/utils/imageUtils";
 import { FiUpload, FiTrash2, FiPackage } from "react-icons/fi";
 
 interface Props {
@@ -19,10 +20,12 @@ export function ImageManager({ sku, concepto, initialImageUrl }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (file: File) => {
+    if (!isAllowedFormat(file)) { toast.error("Formato no permitido. Usa JPG, PNG o WebP."); return; }
     setUploading(true);
     setProgress(0);
     try {
-      const url = await uploadProductImage(file, setProgress);
+      const compressed = await compressImage(file);
+      const url = await uploadProductImage(compressed, setProgress);
 
       const res = await fetch("/api/admin/images", {
         method: "POST",

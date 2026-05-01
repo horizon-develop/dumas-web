@@ -37,12 +37,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           user.passwordHash
         );
         if (!valid) return null;
+        if (user.status === "REJECTED") return null;
 
         return {
           id: String(user.id),
           email: user.email,
           name: user.name,
           role: user.role,
+          status: user.status,
         };
       },
     }),
@@ -55,7 +57,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .from(users)
           .where(eq(users.email, user.email!));
         if (!existing) return false;
-        (user as { role?: string }).role = existing.role;
+        if (existing.status === "REJECTED") return false;
+        (user as any).role = existing.role;
+        (user as any).status = existing.status;
         user.id = String(existing.id);
       }
       return true;
@@ -63,13 +67,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as { role?: string }).role;
+        token.role = (user as any).role;
+        token.status = (user as any).status;
       }
       return token;
     },
     session({ session, token }) {
       session.user.id = token.id as string;
       session.user.role = token.role as string;
+      session.user.status = token.status as string;
       return session;
     },
   },

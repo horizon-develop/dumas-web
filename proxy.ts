@@ -10,17 +10,24 @@ export default auth((req) => {
     pathname.startsWith(p)
   );
 
-  if (isAdminRoute && session?.user?.role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/login", req.url));
+  if (!session && (isAdminRoute || isProtectedRoute)) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(url);
   }
 
-  if (isProtectedRoute && !session) {
-    return NextResponse.redirect(new URL("/login", req.url));
+  if (session && isAdminRoute && session.user.role !== "ADMIN") {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  if (session && pathname.startsWith("/checkout") && (session.user as any).status === "PENDING") {
+    return NextResponse.redirect(new URL("/mi-cuenta", req.url));
   }
 
   return NextResponse.next();
 });
 
 export const config = {
-  matcher: ["/admin/:path*", "/checkout", "/mi-cuenta", "/pedidos/:path*"],
+  matcher: ["/admin/:path*", "/checkout/:path*", "/mi-cuenta/:path*", "/pedidos/:path*"],
 };

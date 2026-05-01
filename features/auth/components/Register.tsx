@@ -1,514 +1,184 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
-import { storeUserData } from '../utils/authUtils';
-import { registerUser } from '../api/authApi';
-import type { Profile } from '../../user/types/profile';
-import type { RegisterClientRequest } from '../types/authDto';
+"use client";
 
-// ==================== INTERFACES Y TIPOS ====================
-interface RegisterProps {
-  onSuccess?: () => void;
-}
+import { useState } from "react";
+import Link from "next/link";
+import { toast } from "react-hot-toast";
 
-interface FormData {
-  name: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  taxId: string;
-  legalCompanyName: string;
-  phoneNumber: string;
-  profile: Profile;
-}
-
-// ==================== CONSTANTES ====================
-const VALIDATION_REGEX = {
-  email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-  taxId: /^\d{11}$/,
-  phoneNumber: /^\d{6,15}$/,
-};
-
-const INITIAL_FORM_DATA: FormData = {
-  name: "",
-  email: "",
-  password: "",
-  confirmPassword: "",
-  taxId: "",
-  legalCompanyName: "",
-  phoneNumber: "",
-  profile: "PETSHOP",
-};
-
-// ==================== COMPONENTE PRINCIPAL ====================
-const Register: React.FC<RegisterProps> = ({ onSuccess }) => {
-  // ==================== ESTADO ====================
-  const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
+export default function Register() {
+  const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "", taxId: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showFieldsError, setShowFieldsError] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [showPass, setShowPass] = useState(false);
 
-  // ==================== FUNCIONES AUXILIARES ====================
-  const getErrorIcon = () => (
-    <svg className="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  const validate = (field: string, value: string) => {
+    switch (field) {
+      case "name": return value.trim() ? "" : "El nombre es obligatorio";
+      case "email": return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? "" : "Email inválido";
+      case "password": return value.length >= 6 ? "" : "Mínimo 6 caracteres";
+      case "confirm": return value === form.password ? "" : "Las contraseñas no coinciden";
+      case "taxId": return value.replace(/\D/g, "").length === 11 ? "" : "CUIT inválido (11 dígitos)";
+      default: return "";
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm((f) => ({ ...f, [name]: value }));
+    setErrors((errs) => ({
+      ...errs,
+      [name]: validate(name, value),
+      ...(name === "password" ? { confirm: validate("confirm", form.confirm) } : {}),
+    }));
+  };
+
+  const isValid = Object.values(form).every((v) => v.trim()) &&
+    Object.values(errors).every((e) => e === "");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: Record<string, string> = {};
+    for (const key of Object.keys(form) as (keyof typeof form)[]) {
+      newErrors[key] = validate(key, form[key]);
+    }
+    setErrors(newErrors);
+    if (Object.values(newErrors).some(Boolean)) return;
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: form.name, email: form.email, password: form.password, taxId: form.taxId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Error al registrarse");
+        return;
+      }
+      setDone(true);
+    } catch {
+      toast.error("Error de conexión. Intentá de nuevo.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (done) {
+    return (
+      <div className="w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 p-8 text-center space-y-4">
+        <div className="w-14 h-14 mx-auto bg-green-100 rounded-full flex items-center justify-center">
+          <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-gray-900">¡Solicitud recibida!</h2>
+        <p className="text-sm text-gray-600 leading-relaxed">
+          Tu cuenta está pendiente de aprobación. Nuestro equipo la revisará y te notificará cuando esté activa.
+        </p>
+        <Link href="/login" className="inline-block text-sm text-[#8B0000] font-semibold hover:underline">
+          Volver al inicio de sesión
+        </Link>
+      </div>
+    );
+  }
+
+  const eyeIcon = (visible: boolean) => visible ? (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+    </svg>
+  ) : (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
     </svg>
   );
 
+  const field = (
+    id: keyof typeof form,
+    label: string,
+    type = "text",
+    placeholder = ""
+  ) => (
+    <div className="space-y-1">
+      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      <div className="relative">
+        <input
+          type={id === "password" || id === "confirm" ? (showPass ? "text" : "password") : type}
+          name={id}
+          value={form[id]}
+          onChange={handleChange}
+          placeholder={placeholder}
+          disabled={submitting}
+          autoComplete={id === "password" || id === "confirm" ? "new-password" : id === "email" ? "email" : "off"}
+          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 transition-all text-sm ${
+            errors[id] ? "border-red-400 focus:ring-red-200" : "border-gray-300 focus:ring-red-200 focus:border-red-400"
+          } ${(id === "password" || id === "confirm") ? "pr-10" : ""}`}
+        />
+        {(id === "password" || id === "confirm") && (
+          <button type="button" onClick={() => setShowPass((v) => !v)} tabIndex={-1}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            {eyeIcon(showPass)}
+          </button>
+        )}
+      </div>
+      {errors[id] && <p className="text-xs text-red-600">{errors[id]}</p>}
+    </div>
+  );
 
-  // ==================== VALIDACIONES ====================
-  const validateField = (name: string, value: string): string => {
-    switch (name) {
-      case "name":
-        return value.trim() ? "" : "El nombre es obligatorio";
-      case "email":
-        return VALIDATION_REGEX.email.test(value) ? "" : "Correo electrónico inválido";
-      case "password":
-        return value.length >= 6 ? "" : "La contraseña debe tener al menos 6 caracteres";
-      case "confirmPassword":
-        return value === formData.password ? "" : "Las contraseñas no coinciden";
-      case "taxId":
-        return VALIDATION_REGEX.taxId.test(value) ? "" : "CUIT inválido (11 dígitos)";
-      case "legalCompanyName":
-        return value.trim() ? "" : "La razón social es obligatoria";
-      case "phoneNumber":
-        return VALIDATION_REGEX.phoneNumber.test(value) ? "" : "Teléfono inválido (6 a 15 dígitos)";
-      default:
-        return "";
-    }
-  };
-
-  const isFormValid = (): boolean =>
-    Object.values(errors).every((err) => err === "") &&
-    Object.values(formData).every((val) => val.trim() !== "");
-
-  // ==================== MANEJO DE ERRORES ====================
-  const handleError = (error: any) => {
-    const errorMsg = error.message || "Error desconocido";
-    setSubmitError(errorMsg);
-
-    const shouldShowToast = errorMsg.includes("Servidor no disponible") || 
-                           errorMsg.includes("Demasiadas solicitudes") ||
-                           errorMsg.includes("Error de conexión");
-
-    if (shouldShowToast) {
-      toast.error(
-        <div className="flex items-center">
-          {getErrorIcon()}
-          <span>{errorMsg}</span>
-        </div>,
-        { 
-          position: "top-right", 
-          duration: 6000,
-        }
-      );
-    }
-  };
-
-  // ==================== MANEJO DE ÉXITO ====================
-  const handleAuthSuccess = (userData: any) => {
-    storeUserData(userData);
-
-    window.dispatchEvent(new CustomEvent('auth-login', { 
-      detail: userData 
-    }));
-
-    if (!onSuccess) {
-      toast.success(
-        <div className="flex items-center">
-          <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-          <span>¡Registro exitoso! Bienvenido</span>
-        </div>,
-        {
-          position: "top-right",
-          duration: 3000,
-        }
-      );
-    }
-    
-    if (userData.role === 'ADMINISTRADOR') {
-      navigate('/admin/dashboard');
-    } else {
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        navigate('/shop');
-      }
-    }
-  };
-
-  // ==================== HANDLERS ====================
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    
-    const newFormData = { ...formData, [name]: value };
-    setFormData(newFormData);
-
-    const newErrors = {
-      ...errors,
-      [name]: validateField(name, value),
-    };
-
-    
-    if (name === "password") {
-      newErrors.confirmPassword = validateField("confirmPassword", formData.confirmPassword);
-    }
-
-    setErrors(newErrors);
-    setShowFieldsError(false);
-    setSubmitError('');
-  };
-
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e && e.preventDefault) e.preventDefault();
-
-    if (!isFormValid()) {
-      setShowFieldsError(true);
-      toast(
-        <div className="flex items-center">
-          <svg className="w-5 h-5 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>Por favor completa todos los campos correctamente</span>
-        </div>,
-        { position: "top-right", duration: 4000 }
-      );
-      return;
-    }
-
-    setIsSubmitting(true);
-    setSubmitError('');
-
-    try {
-      const request: RegisterClientRequest = {
-        email: formData.email.trim(),
-        password: formData.password,
-        taxId: formData.taxId,
-        legalCompanyName: formData.legalCompanyName.trim(),
-        phoneNumber: formData.phoneNumber,
-        profile: formData.profile,
-      };
-
-      const response = await registerUser(request);
-
-      handleAuthSuccess(response);
-    } catch (error: any) {
-      handleError(error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // ==================== RENDER ====================
   return (
-    <form 
-      onSubmit={handleSubmit}
-      className="w-full max-w-xl mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-8 space-y-5"
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8B0000]/80">Registro</p>
-          <h3 className="text-2xl font-bold text-gray-900 leading-tight">Crea tu cuenta!</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Accede a precios de distribuidor y arma tu petshop en minutos.
-          </p>
-        </div>
+    <form onSubmit={handleSubmit} className="w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-8 space-y-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-[#8B0000]/80">Registro</p>
+        <h2 className="text-2xl font-bold text-gray-900 leading-tight">Solicitá tu acceso</h2>
+        <p className="text-sm text-gray-500 mt-1">Precios mayoristas para petshops y veterinarias.</p>
       </div>
 
-      {/* Error de envío */}
-      {submitError && (
-        <div className="mb-2 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm">
-          <div className="flex items-center">
-            {getErrorIcon()}
-            <span>{submitError}</span>
-          </div>
-        </div>
-      )}
+      {field("name", "Nombre completo", "text", "Tu nombre o razón social")}
+      {field("email", "Correo electrónico", "email", "ejemplo@correo.com")}
 
-      {/* Nombre */}
+      <div className="grid grid-cols-2 gap-3">
+        {field("password", "Contraseña")}
+        {field("confirm", "Confirmar")}
+      </div>
+
       <div className="space-y-1">
-        <label className="block text-gray-700 text-sm font-medium">
-          Nombre:
-        </label>
-        <input
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleInputChange}
-          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 transition-all ${
-            errors.name 
-              ? "border-red-500 focus:ring-red-500" 
-              : "border-gray-300 focus:ring-red-500 focus:border-red-500"
-          }`}
-          placeholder="Tu nombre completo"
-          required
-          disabled={isSubmitting}
-          autoComplete="name"
-        />
-        {errors.name && (
-          <span className="text-xs text-red-600 block">{errors.name}</span>
-        )}
-      </div>
-
-      {/* Email */}
-      <div className="space-y-1">
-        <label className="block text-gray-700 text-sm font-medium">
-          Correo electrónico:
-        </label>
-        <input
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={handleInputChange}
-          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 transition-all ${
-            errors.email 
-              ? "border-red-500 focus:ring-red-500" 
-              : "border-gray-300 focus:ring-red-500 focus:border-red-500"
-          }`}
-          placeholder="ejemplo@correo.com"
-          required
-          disabled={isSubmitting}
-          autoComplete="email"
-        />
-        {errors.email && (
-          <span className="text-xs text-red-600 block">{errors.email}</span>
-        )}
-      </div>
-
-      {/* Contraseñas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <label className="block text-gray-700 text-sm font-medium">
-            Contraseña:
-          </label>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              value={formData.password}
-              onChange={handleInputChange}
-              className={`w-full px-4 py-2.5 pr-10 border rounded-lg focus:ring-2 transition-all ${
-                errors.password
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:ring-red-500 focus:border-red-500"
-              }`}
-              placeholder="Mínimo 6 caracteres"
-              required
-              disabled={isSubmitting}
-              autoComplete="new-password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-              tabIndex={-1}
-            >
-              {showPassword ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              )}
-            </button>
-          </div>
-          {errors.password && (
-            <span className="text-xs text-red-600 block">{errors.password}</span>
-          )}
-        </div>
-        
-        <div className="space-y-1">
-          <label className="block text-gray-700 text-sm font-medium">
-            Confirmar:
-          </label>
-          <div className="relative">
-            <input
-              type={showConfirmPassword ? "text" : "password"}
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleInputChange}
-              className={`w-full px-4 py-2.5 pr-10 border rounded-lg focus:ring-2 transition-all ${
-                errors.confirmPassword
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:ring-red-500 focus:border-red-500"
-              }`}
-              placeholder="Repetir contraseña"
-              required
-              disabled={isSubmitting}
-              autoComplete="new-password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-              tabIndex={-1}
-            >
-              {showConfirmPassword ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              )}
-            </button>
-          </div>
-          {errors.confirmPassword && (
-            <span className="text-xs text-red-600 block">{errors.confirmPassword}</span>
-          )}
-        </div>
-      </div>
-
-      {/* Tipo de perfil */}
-      <div className="space-y-1">
-        <label className="block text-gray-700 text-sm font-medium">
-          Tipo de perfil:
-        </label>
-        <select
-          name="profile"
-          value={formData.profile}
-          onChange={handleInputChange}
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all appearance-none bg-white"
-          required
-          disabled={isSubmitting}
-        >
-          <option value="PETSHOP">PETSHOP</option>
-          <option value="VETERINARIA">VETERINARIA</option>
-          <option value="FORRAJERIA">FORRAJERIA</option>
-        </select>
-      </div>
-
-      {/* CUIT */}
-      <div className="space-y-1">
-        <label className="block text-gray-700 text-sm font-medium">
-          CUIT:
-        </label>
+        <label className="block text-sm font-medium text-gray-700">CUIT</label>
         <input
           type="text"
           name="taxId"
-          value={formData.taxId}
-          onChange={handleInputChange}
-          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 transition-all ${
-            errors.taxId 
-              ? "border-red-500 focus:ring-red-500" 
-              : "border-gray-300 focus:ring-red-500 focus:border-red-500"
-          }`}
-          placeholder="11 dígitos sin guiones"
-          required
-          disabled={isSubmitting}
+          value={form.taxId}
+          onChange={handleChange}
+          placeholder="20-12345678-9"
+          disabled={submitting}
           autoComplete="off"
-        />
-        {errors.taxId && (
-          <span className="text-xs text-red-600 block">{errors.taxId}</span>
-        )}
-      </div>
-
-      {/* Razón social */}
-      <div className="space-y-1">
-        <label className="block text-gray-700 text-sm font-medium">
-          Razón social:
-        </label>
-        <input
-          type="text"
-          name="legalCompanyName"
-          value={formData.legalCompanyName}
-          onChange={handleInputChange}
-          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 transition-all ${
-            errors.legalCompanyName 
-              ? "border-red-500 focus:ring-red-500" 
-              : "border-gray-300 focus:ring-red-500 focus:border-red-500"
+          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 transition-all text-sm ${
+            errors.taxId ? "border-red-400 focus:ring-red-200" : "border-gray-300 focus:ring-red-200 focus:border-red-400"
           }`}
-          placeholder="Nombre legal de la empresa"
-          required
-          disabled={isSubmitting}
-          autoComplete="organization"
         />
-        {errors.legalCompanyName && (
-          <span className="text-xs text-red-600 block">{errors.legalCompanyName}</span>
-        )}
+        {errors.taxId && <p className="text-xs text-red-600">{errors.taxId}</p>}
+        <p className="text-xs text-gray-400">Ingresá el CUIT de tu negocio para verificar tu cuenta en nuestro sistema.</p>
       </div>
 
-      {/* Teléfono */}
-      <div className="space-y-1">
-        <label className="block text-gray-700 text-sm font-medium">
-          Teléfono:
-        </label>
-        <input
-          type="text"
-          name="phoneNumber"
-          value={formData.phoneNumber}
-          onChange={handleInputChange}
-          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 transition-all ${
-            errors.phoneNumber 
-              ? "border-red-500 focus:ring-red-500" 
-              : "border-gray-300 focus:ring-red-500 focus:border-red-500"
-          }`}
-          placeholder="Número sin espacios ni guiones"
-          required
-          disabled={isSubmitting}
-          autoComplete="tel"
-        />
-        {errors.phoneNumber && (
-          <span className="text-xs text-red-600 block">{errors.phoneNumber}</span>
-        )}
-      </div>
-
-      {/* Submit Button */}
       <button
         type="submit"
-        disabled={isSubmitting || !isFormValid()}
-        className={`w-full py-3 font-semibold rounded-lg focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all ${
-          isFormValid() && !isSubmitting
-            ? 'bg-[#8B0000] text-white hover:bg-[#6A0000]' 
-            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-        }`}
+        disabled={submitting || !isValid}
+        className="w-full py-3 text-sm font-semibold rounded-lg transition-all bg-[#8B0000] text-white hover:bg-[#6A0000] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
       >
-        {isSubmitting ? (
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+        {submitting ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
             Registrando...
-          </div>
-        ) : (
-          'Registrarse'
-        )}
+          </span>
+        ) : "Solicitar acceso"}
       </button>
 
-      {/* Error de campos vacíos */}
-      {showFieldsError && (
-        <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm text-center">
-          <div className="flex items-center justify-center">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>Es necesario completar todos los campos correctamente</span>
-          </div>
-        </div>
-      )}
-      <div className="text-sm text-gray-600 text-center">
-        ¿Ya tenes cuenta?{" "}
-        <button
-          type="button"
-          className="text-[#8B0000] font-semibold hover:underline"
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent('auth-open-login'));
-          }}
-        >
+      <p className="text-sm text-gray-500 text-center">
+        ¿Ya tenés cuenta?{" "}
+        <Link href="/login" className="text-[#8B0000] font-semibold hover:underline">
           Iniciar sesión
-        </button>
-      </div>
+        </Link>
+      </p>
     </form>
   );
-};
-
-export default Register;
+}

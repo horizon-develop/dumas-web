@@ -4,8 +4,10 @@ import { db } from "@/lib/db";
 import { productImages } from "@/lib/db/schema";
 import { inArray } from "drizzle-orm";
 import { ImageManager } from "./ImageManager";
+import { BulkUploader } from "./BulkUploader";
 
 const PAGE_SIZE = 24;
+const SISTEL_LIMIT = 50;
 
 interface SearchParams {
   page?: string;
@@ -13,12 +15,59 @@ interface SearchParams {
   rubro?: string;
 }
 
+async function fetchAllSistelProducts(rubro?: string): Promise<SistelArticulo[]> {
+  const base: Record<string, string> = { page: "1", limit: String(SISTEL_LIMIT) };
+  if (rubro) base.rubro = rubro;
+
+  const first = await sistelGetPaginated<SistelArticulo>("productos", base);
+  const { totalPages } = first.pagination;
+
+  if (totalPages <= 1) return first.data;
+
+  const rest = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, i) =>
+      sistelGetPaginated<SistelArticulo>("productos", {
+        ...base,
+        page: String(i + 2),
+      }).then((r) => r.data)
+    )
+  );
+
+  return [...first.data, ...rest.flat()];
+}
+
 async function getProducts(sp: SearchParams) {
+  if (sp.q) {
+    const q = sp.q.toLowerCase();
+    let all: SistelArticulo[];
+    try {
+      all = await fetchAllSistelProducts(sp.rubro);
+    } catch {
+      return null;
+    }
+    const matched = all.filter(
+      (p) =>
+        p.Codigo?.toLowerCase().includes(q) ||
+        p.concepto?.toLowerCase().includes(q)
+    );
+
+    const skus = matched.map((p) => p.Codigo).filter(Boolean);
+    const images =
+      skus.length > 0
+        ? await db.select().from(productImages).where(inArray(productImages.sku, skus))
+        : [];
+    const imageMap = Object.fromEntries(images.map((img) => [img.sku, img.firebaseUrl]));
+
+    return {
+      products: matched.map((p) => ({ ...p, imageUrl: imageMap[p.Codigo] ?? null })),
+      pagination: { page: 1, limit: matched.length, total: matched.length, totalPages: 1 },
+    };
+  }
+
   const params: Record<string, string> = {
     page: sp.page ?? "1",
     limit: String(PAGE_SIZE),
   };
-  if (sp.q) params.q = sp.q;
   if (sp.rubro) params.rubro = sp.rubro;
 
   const sistelRes = await sistelGetPaginated<SistelArticulo>("productos", params).catch(() => null);
@@ -29,7 +78,6 @@ async function getProducts(sp: SearchParams) {
     skus.length > 0
       ? await db.select().from(productImages).where(inArray(productImages.sku, skus))
       : [];
-
   const imageMap = Object.fromEntries(images.map((img) => [img.sku, img.firebaseUrl]));
 
   return {
@@ -67,11 +115,15 @@ export default async function AdminProductosPage({
         <h1 className="text-2xl font-bold text-gray-900">Imágenes de productos</h1>
         {result && (
           <p className="text-sm text-gray-500 mt-1">
-            {total.toLocaleString("es-AR")} productos en catálogo ·{" "}
-            <span className="text-green-700 font-medium">{withImages} con imagen</span> en esta página
+            {sp.q
+              ? <>{total.toLocaleString("es-AR")} resultados · <span className="text-green-700 font-medium">{withImages} con imagen</span></>
+              : <>{total.toLocaleString("es-AR")} productos en catálogo · <span className="text-green-700 font-medium">{withImages} con imagen</span> en esta página</>
+            }
           </p>
         )}
       </div>
+
+      <BulkUploader />
 
       <form className="mb-6 flex gap-2 flex-wrap" method="get">
         <input
