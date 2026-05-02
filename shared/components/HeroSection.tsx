@@ -14,7 +14,7 @@ const HeroSection: React.FC = () => {
           className="w-full h-full object-cover object-center md:object-right"
           loading="eager"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/10" />
       </div>
 
       <div className="relative z-10 max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-28">
@@ -39,7 +39,7 @@ const HeroSection: React.FC = () => {
                 exit={{ y: "-120%" }}
                 staggerDuration={0.03}
                 splitLevelClassName="overflow-hidden"
-                transition={{ type: "spring", damping: 30, stiffness: 400, bounce: 0.1 }}
+                transition={{ type: "spring", damping: 30, stiffness: 400 }}
                 rotationInterval={2600}
                 splitBy="words"
               />
