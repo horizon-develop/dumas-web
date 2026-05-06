@@ -36,9 +36,9 @@ export default async function MiCuentaPage() {
   let deudas: SistelDeuda[] = [];
 
   if (user.sistelId) {
-    const deudasRes = await sistelGet<SistelDeuda>("deudas", undefined, { nocache: true }).catch(() => null);
+    const deudasRes = await sistelGet<SistelDeuda>("deudas", { IDCLiente: String(user.sistelId) }, { nocache: true }).catch(() => null);
     if (deudasRes) {
-      deudas = deudasRes.data.filter((d) => d.IDCLiente === user.sistelId);
+      deudas = deudasRes.data;
     }
   }
 
