@@ -3,43 +3,20 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { sistelGetPaginated } from "@/lib/sistel";
+import { sistelGet } from "@/lib/sistel";
 import type { SistelCliente } from "@/lib/sistel";
 
 function normalizeCuit(cuit: string): string {
   return cuit.replace(/\D/g, "");
 }
 
-const SISTEL_LIMIT = 50;
+function formatCuit(digits: string): string {
+  return `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits.slice(10)}`;
+}
 
-async function findSistelIdByCuit(cuit: string, email: string): Promise<number | null> {
-  const base = { page: "1", limit: String(SISTEL_LIMIT) };
-  const first = await sistelGetPaginated<SistelCliente>("clientes", base);
-  const { totalPages } = first.pagination;
-
-  const rest =
-    totalPages > 1
-      ? await Promise.all(
-          Array.from({ length: totalPages - 1 }, (_, i) =>
-            sistelGetPaginated<SistelCliente>("clientes", {
-              ...base,
-              page: String(i + 2),
-            }).then((r) => r.data)
-          )
-        )
-      : [];
-
-  const all = [...first.data, ...rest.flat()];
-
-  const match = all.find((c) => {
-    const cuitNorm = normalizeCuit(c.CUIT);
-    if (cuitNorm === "00000000000" || cuitNorm.length !== 11) return false;
-    if (cuitNorm === cuit) return true;
-    if (c.Email && c.Email.toLowerCase() === email) return true;
-    return false;
-  });
-
-  return match?.ID ?? null;
+async function findSistelIdByCuit(cuit: string): Promise<number | null> {
+  const res = await sistelGet<SistelCliente>("clientes", { CUIT: formatCuit(cuit) }, { nocache: true });
+  return res.data[0]?.ID ?? null;
 }
 
 export async function POST(req: NextRequest) {
@@ -68,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     let sistelId: number | null = null;
     try {
-      sistelId = await findSistelIdByCuit(normalizedTaxId, normalizedEmail);
+      sistelId = await findSistelIdByCuit(normalizedTaxId);
     } catch {
       // Sistel unreachable — create account without linking
     }

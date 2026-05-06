@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -27,8 +27,11 @@ const Navbar: React.FC = () => {
   const { data: session } = useSession();
   const { itemCount } = useCart();
 
+  const [mounted, setMounted] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const isAuthenticated = !!session;
   const isAdmin = session?.user?.role === "ADMIN";
@@ -78,7 +81,7 @@ const Navbar: React.FC = () => {
               aria-label="Ver carrito"
             >
               <FiShoppingCart className="h-5 w-5 sm:h-6 sm:w-6" />
-              {itemCount > 0 && (
+              {mounted && itemCount > 0 && (
                 <motion.span
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
