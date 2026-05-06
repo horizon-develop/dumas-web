@@ -26,10 +26,10 @@ export default function RootLayout({
       <body>
         <Providers>
           <Navbar />
-          <SpeedInsights />
           {children}
           <Footer />
         </Providers>
+        <SpeedInsights />
       </body>
     </html>
   );
