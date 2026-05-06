@@ -48,7 +48,8 @@ export interface SistelPaginatedResponse<T> {
 
 export async function sistelGet<T>(
   alias: string,
-  params?: Record<string, string>
+  params?: Record<string, string>,
+  options?: { nocache?: boolean }
 ): Promise<SistelListResponse<T>> {
   const token = await getToken();
   const url = new URL(`${SISTEL_BASE}/vistas/${alias}`);
@@ -58,7 +59,7 @@ export async function sistelGet<T>(
 
   const res = await fetch(url.toString(), {
     headers: { Authorization: `Bearer ${token}` },
-    next: { revalidate: 60 },
+    ...(options?.nocache ? { cache: "no-store" } : { next: { revalidate: 60 } }),
   });
 
   if (!res.ok) throw new Error(`Sistel GET /vistas/${alias}: ${res.status}`);
@@ -138,6 +139,15 @@ export interface SistelDealItem {
   cantidad: number;
   precio: number;
   descuento?: number;
+}
+
+export interface SistelDeuda {
+  IDCLiente: number;
+  Fecha: string;
+  Comprobante: string;
+  FechaVenc: string;
+  Observaciones__: string | null;
+  Saldo: number;
 }
 
 export interface SistelDeal {

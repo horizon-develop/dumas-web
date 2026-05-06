@@ -14,3 +14,13 @@ export async function unlinkSistelClient(userId: number) {
   await db.update(users).set({ sistelId: null }).where(eq(users.id, userId));
   revalidatePath("/admin/clientes");
 }
+
+export async function approveUser(userId: number) {
+  await db.update(users).set({ status: "ACTIVE" }).where(eq(users.id, userId));
+  revalidatePath("/admin/clientes");
+}
+
+export async function rejectUser(userId: number) {
+  await db.update(users).set({ status: "REJECTED" }).where(eq(users.id, userId));
+  revalidatePath("/admin/clientes");
+}
