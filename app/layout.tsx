@@ -4,6 +4,7 @@ import { Providers } from "./providers";
 import Navbar from "@/shared/components/Navbar";
 import Footer from "@/shared/components/Footer";
 import "./globals.css";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const lato = Lato({
   weight: ["400", "700", "900"],
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body>
         <Providers>
           <Navbar />
+          <SpeedInsights />
           {children}
           <Footer />
         </Providers>
