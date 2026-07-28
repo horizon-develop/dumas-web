@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { FiSend, FiCreditCard, FiGlobe } from "react-icons/fi";
 import { auth } from "@/lib/auth";
 
@@ -36,8 +37,9 @@ const Footer = async () => {
           <div>
             <div className="text-xl font-bold mb-4">Información</div>
             <ul className="space-y-2">
-              <li><a href="/contacto" className="hover:text-gray-200 transition-colors">Contacto</a></li>
-              <li><a href="/nosotros" className="hover:text-gray-200 transition-colors">Quiénes somos</a></li>
+              <li><Link href="/shop" className="hover:text-gray-200 transition-colors">Catálogo mayorista</Link></li>
+              <li><Link href="/contacto" className="hover:text-gray-200 transition-colors">Contacto</Link></li>
+              <li><Link href="/nosotros" className="hover:text-gray-200 transition-colors">Quiénes somos</Link></li>
             </ul>
           </div>
 

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import { FiMapPin, FiPhone, FiSend } from "react-icons/fi";
 

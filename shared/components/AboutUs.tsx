@@ -1,5 +1,5 @@
 import { FaMapMarkerAlt, FaHeart, FaTruck } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 
 const AboutUs = () => {
   return (
@@ -69,7 +69,7 @@ const AboutUs = () => {
       <div className="bg-red-50 text-center py-12">
         <h3 className="text-2xl font-bold mb-4 text-gray-800">¿Consultas?</h3>
         <Link
-          to="/contacto"
+          href="/contacto"
           className="inline-block bg-[#8B0000] text-white px-8 py-3 rounded-lg hover:bg-[#6A0000] transition-all shadow-md hover:shadow-lg"
         >
           Contacto Directo
