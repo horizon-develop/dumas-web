@@ -2,6 +2,9 @@ const SISTEL_BASE = process.env.SISTEL_URL!;
 const SISTEL_USER = process.env.SISTEL_USER!;
 const SISTEL_PASS = process.env.SISTEL_PASS!;
 
+const AUTH_TIMEOUT_MS = 5_000;
+const REQUEST_TIMEOUT_MS = 15_000;
+
 let cachedToken: string | null = null;
 let tokenExpiry = 0;
 
@@ -13,6 +16,7 @@ async function getToken(): Promise<string> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username: SISTEL_USER, password: SISTEL_PASS }),
     cache: "no-store",
+    signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
   });
 
   if (!res.ok) throw new Error(`Sistel auth failed: ${res.status}`);
@@ -59,6 +63,7 @@ export async function sistelGet<T>(
 
   const res = await fetch(url.toString(), {
     headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     ...(options?.nocache ? { cache: "no-store" } : { next: { revalidate: 60 } }),
   });
 
@@ -78,6 +83,7 @@ export async function sistelGetPaginated<T>(
 
   const res = await fetch(url.toString(), {
     headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     next: { revalidate: 60 },
   });
 
@@ -94,6 +100,7 @@ export async function sistelPost<T>(path: string, body: unknown): Promise<T> {
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 
   if (!res.ok) throw new Error(`Sistel POST ${path}: ${res.status}`);

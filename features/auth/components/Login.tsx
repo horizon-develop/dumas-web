@@ -38,6 +38,7 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
 
       if (res?.error) {
         toast.error("Email o contraseña incorrectos");
+        setIsSubmitting(false);
         return;
       }
 
@@ -52,7 +53,6 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
       onLoginSuccess?.();
     } catch {
       toast.error("Error al iniciar sesión. Intentá de nuevo.");
-    } finally {
       setIsSubmitting(false);
     }
   };
