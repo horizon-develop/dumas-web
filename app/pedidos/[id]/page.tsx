@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Detalle del pedido",
+  robots: { index: false, follow: false },
+};
+
 export default async function OrderPage({
   params,
 }: {

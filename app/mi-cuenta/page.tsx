@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
@@ -6,6 +7,11 @@ import { eq } from "drizzle-orm";
 import { sistelGet } from "@/lib/sistel";
 import type { SistelDeuda } from "@/lib/sistel";
 import { formatCurrency, formatDate } from "@/shared/utils/formatters";
+
+export const metadata: Metadata = {
+  title: "Mi cuenta",
+  robots: { index: false, follow: false },
+};
 
 export default async function MiCuentaPage() {
   const session = await auth();

@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { sistelGetPaginated, SistelArticulo } from "@/lib/sistel";
 import { db } from "@/lib/db";
 import { productImages } from "@/lib/db/schema";
 import { inArray } from "drizzle-orm";
 import { ProductCard, ProductItem } from "@/features/product/components/ProductCard";
 import { ShopFilters } from "@/features/product/components/ShopFilters";
+import JsonLd from "@/shared/components/JsonLd";
+import { OG_IMAGE, SITE_NAME, SITE_URL } from "@/shared/config/site";
 
 const PAGE_SIZE = 50;
 
@@ -14,6 +17,43 @@ interface SearchParams {
   q?: string;
   rubro?: string;
   marca?: string;
+}
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}): Promise<Metadata> {
+  const sp = await searchParams;
+  const page = Number(sp.page ?? 1);
+  const isFiltered = Boolean(sp.q || sp.rubro || sp.marca);
+
+  const title = isFiltered
+    ? `Catálogo mayorista${sp.rubro ? ` — ${sp.rubro}` : ""}${sp.marca ? ` — ${sp.marca}` : ""}`
+    : page > 1
+      ? `Catálogo mayorista — Página ${page}`
+      : "Catálogo mayorista de productos veterinarios y pet care";
+
+  const description = isFiltered
+    ? `Resultados del catálogo mayorista de ${SITE_NAME}${sp.rubro ? ` en ${sp.rubro}` : ""}${sp.marca ? ` de la marca ${sp.marca}` : ""}.`
+    : "Explorá el catálogo mayorista de Dumas Distribuciones: alimentos balanceados, fármacos veterinarios, accesorios y saneamiento para petshops, veterinarias y forrajerías.";
+
+  const canonical = isFiltered ? "/shop" : page > 1 ? `/shop?page=${page}` : "/shop";
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    robots: isFiltered ? { index: false, follow: true } : { index: true, follow: true },
+    openGraph: {
+      type: "website",
+      url: canonical,
+      title,
+      description,
+      siteName: SITE_NAME,
+      images: [OG_IMAGE],
+    },
+  };
 }
 
 async function getProducts(sp: SearchParams) {
@@ -72,12 +112,22 @@ export default async function ShopPage({
     ? [...new Set(result.products.map((p) => p.marca).filter(Boolean))].sort()
     : [];
 
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Inicio", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "Catálogo", item: `${SITE_URL}/shop` },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <JsonLd data={breadcrumbSchema} />
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Catálogo</h1>
+            <h1 className="text-xl font-bold text-gray-900">Catálogo mayorista</h1>
             <p className="text-sm text-gray-500 mt-0.5">
               {result ? `${total.toLocaleString("es-AR")} productos` : "Sin conexión a Sistel"}
             </p>

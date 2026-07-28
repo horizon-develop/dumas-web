@@ -1,15 +1,27 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { FiArrowLeft, FiPackage, FiTag, FiLayers } from "react-icons/fi";
 import { sistelGetPaginated, SistelArticulo } from "@/lib/sistel";
 import { db } from "@/lib/db";
 import { productImages } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import JsonLd from "@/shared/components/JsonLd";
+import { OG_IMAGE, SITE_NAME, SITE_URL } from "@/shared/config/site";
 import AddToCart from "./AddToCart";
 
 const SISTEL_LIMIT = 50;
 
-async function findProductBySku(sku: string): Promise<SistelArticulo | null> {
+const getProductImage = cache(async (sku: string) =>
+  db
+    .select()
+    .from(productImages)
+    .where(eq(productImages.sku, sku))
+    .then((r) => r[0] ?? null)
+);
+
+async function fetchProductBySku(sku: string): Promise<SistelArticulo | null> {
   const base = { page: "1", limit: String(SISTEL_LIMIT) };
   const first = await sistelGetPaginated<SistelArticulo>("productos", base);
   const { totalPages } = first.pagination;
@@ -32,6 +44,56 @@ async function findProductBySku(sku: string): Promise<SistelArticulo | null> {
   return null;
 }
 
+const findProductBySku = cache(fetchProductBySku);
+
+function buildDescription(product: SistelArticulo): string {
+  const parts = [product.concepto, product.marca, product.rubro].filter(Boolean);
+  return `${parts.join(" — ")}. Disponible por mayor en ${SITE_NAME}, distribuidora de productos veterinarios y pet care en Corrientes.`;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ sku: string }>;
+}): Promise<Metadata> {
+  const { sku } = await params;
+  const product = await findProductBySku(sku);
+
+  if (!product) {
+    return {
+      title: "Producto no encontrado",
+      robots: { index: false, follow: true },
+    };
+  }
+
+  const imageRow = await getProductImage(sku);
+  const imageUrl = imageRow?.firebaseUrl ?? null;
+  const description = buildDescription(product);
+  const canonical = `/shop/${encodeURIComponent(sku)}`;
+
+  return {
+    title: `${product.concepto}${product.marca ? ` — ${product.marca}` : ""}`,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      type: "website",
+      url: canonical,
+      siteName: SITE_NAME,
+      title: product.concepto,
+      description,
+      images: imageUrl
+        ? [{ url: imageUrl, alt: product.concepto }]
+        : [OG_IMAGE],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.concepto,
+      description,
+      images: imageUrl ? [imageUrl] : [OG_IMAGE.url],
+    },
+  };
+}
+
 export default async function ProductPage({
   params,
 }: {
@@ -41,7 +103,7 @@ export default async function ProductPage({
 
   const [product, imageRow] = await Promise.all([
     findProductBySku(sku),
-    db.select().from(productImages).where(eq(productImages.sku, sku)).then((r) => r[0] ?? null),
+    getProductImage(sku),
   ]);
 
   if (!product) notFound();
@@ -49,8 +111,37 @@ export default async function ProductPage({
   const imageUrl = imageRow?.firebaseUrl ?? null;
   const inStock = product.Stock > 0;
 
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.concepto,
+    sku: product.Codigo,
+    description: buildDescription(product),
+    url: `${SITE_URL}/shop/${encodeURIComponent(sku)}`,
+    ...(imageUrl ? { image: imageUrl } : {}),
+    ...(product.marca ? { brand: { "@type": "Brand", name: product.marca } } : {}),
+    ...(product.rubro ? { category: product.rubro } : {}),
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Inicio", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "Catálogo", item: `${SITE_URL}/shop` },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: product.concepto,
+        item: `${SITE_URL}/shop/${encodeURIComponent(sku)}`,
+      },
+    ],
+  };
+
   return (
     <main className="min-h-screen bg-gray-50">
+      <JsonLd data={productSchema} />
+      <JsonLd data={breadcrumbSchema} />
       <div className="max-w-screen-lg mx-auto px-4 sm:px-6 py-6">
         <Link
           href="/shop"

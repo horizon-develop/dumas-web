@@ -1,5 +1,12 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import Login from "@/features/auth/components/Login";
+
+export const metadata: Metadata = {
+  title: "Iniciar sesión",
+  description: "Accedé a tu cuenta mayorista de Dumas Distribuciones para ver precios y hacer pedidos.",
+  robots: { index: false, follow: true },
+};
 
 export default function LoginPage() {
   return (
