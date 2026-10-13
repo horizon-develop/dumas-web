@@ -6,8 +6,6 @@ import { signIn, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
 
-const googleIcon = "/assets/Icons/Socials/google.svg";
-
 interface LoginProps {
   onLoginSuccess?: () => void;
 }
@@ -53,16 +51,6 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
       onLoginSuccess?.();
     } catch {
       toast.error("Error al iniciar sesión. Intentá de nuevo.");
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setIsSubmitting(true);
-    try {
-      await signIn("google", { callbackUrl });
-    } catch {
-      toast.error("Error al iniciar sesión con Google.");
       setIsSubmitting(false);
     }
   };
@@ -155,15 +143,6 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
           Solicitá acceso
         </Link>
       </p>
-
-      <button
-        onClick={handleGoogleSignIn}
-        disabled={isSubmitting}
-        className="w-full p-3 bg-white border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-red-500 flex items-center justify-center gap-2 transition-all"
-      >
-        <img src={googleIcon} alt="Google" className="w-5 h-5" />
-        {isSubmitting ? "Conectando..." : "Iniciar sesión con Google"}
-      </button>
     </div>
   );
 };

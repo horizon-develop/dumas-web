@@ -28,9 +28,6 @@ DATABASE_URL=           # Neon connection string
 NEXTAUTH_SECRET=        # openssl rand -base64 32
 NEXTAUTH_URL=http://localhost:3000
 
-GOOGLE_CLIENT_ID=       # Firebase Console → Auth → Google → Web client
-GOOGLE_CLIENT_SECRET=
-
 NEXT_PUBLIC_FIREBASE_*  # Already filled — Firebase Storage only
 ```
 
@@ -52,7 +49,7 @@ Pure Next.js App Router. Every page is a file in `app/`. Server Components by de
 | `/checkout` | Checkout (auth protected) |
 | `/pedidos/[id]` | Order confirmation |
 | `/mi-cuenta` | Customer profile + order history |
-| `/login` | Login (credentials + Google) |
+| `/login` | Login (credentials) |
 | `/admin/productos` | Product image management |
 | `/admin/clientes` | Client list from Sistel + web account linking |
 | `/admin/pedidos` | Order history |
@@ -80,9 +77,8 @@ Pure Next.js App Router. Every page is a file in `app/`. Server Components by de
 | `product_images` | Firebase URL per SKU (sku is PK) |
 
 ### Auth (`lib/auth.ts`)
-NextAuth v5 (JWT strategy). Two providers:
+NextAuth v5 (JWT strategy). One provider:
 - **Credentials** — email + bcrypt password from `users` table
-- **Google** — only works if user email already exists in DB (admin invites clients)
 
 Session contains `id` and `role`. Middleware (`middleware.ts`) enforces:
 - `/admin/*` → ADMIN role required
