@@ -1,1 +1,0 @@
-export type Profile = "PETSHOP" | "VETERINARIA" | "FORRAJERIA";

@@ -34,5 +34,3 @@ export const SOCIALS = [
   "https://www.instagram.com/dumas.distribucion/",
   "https://www.facebook.com/distribuidora.dumas/",
 ];
-
-export const PRIVATE_PATHS = ["/admin", "/checkout", "/mi-cuenta", "/pedidos", "/api", "/login", "/register"];
