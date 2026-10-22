@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "lato",
+        "createdAt": "2026-10-22T13:19:47.303Z",
+        "reason": "project convention: CLAUDE.md specifies 'Font: Lato via next/font/google'; predates this session"
+      }
+    ]
+  }
+}

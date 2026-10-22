@@ -17,6 +17,7 @@ import {
 } from "@/shared/config/site";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 const lato = Lato({
   weight: ["400", "700", "900"],
@@ -164,6 +165,7 @@ export default function RootLayout({
         <JsonLd data={websiteSchema} />
         <SpeedInsights />
       </body>
+      <GoogleAnalytics gaId="G-C2VX8MSBQW" />
     </html>
   );
 }
